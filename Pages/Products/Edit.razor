@@ -1,0 +1,82 @@
+﻿@page "/products/edit/{id:int}"
+@using BlazingShop.Models
+@using BlazingShop.Data
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Context;
+@inject NavigationManager NavManager
+
+<h1>@model?.Title</h1>
+
+<EditForm Model="@model" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+
+    <div class="mb-3">
+        <label for="Title" class="form-label">Title</label>
+        <InputText class="form-control" type="text" id="Title" @bind-Value="model.Title"/>
+    </div>
+
+    <div class="mb-3">
+        <label for="Price" class="form-label">Price</label>
+        <InputNumber class="form-control" type="number" id="Price" @bind-Value="model.Price"/>
+    </div>
+
+    <div class="mb-3">
+        <label for="CategoryId" class="form-label">Category</label>
+        <InputSelect id="categoryId" @bind-Value="model.CategoryId" class="form-control">
+            @foreach (var category in categories)
+            {
+                <option value="@category.Id">@category.Title</option>
+            }
+        </InputSelect>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @errorMessage
+        </div>
+    }
+
+    <button class="btn btn-success" type="submit">SAVE</button>
+</EditForm>
+
+@code {
+
+    [Parameter]
+    public int Id { get; set; }
+
+    private Product? model = new();
+    private List<Category> categories = new();
+    private string? errorMessage = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await Context.Categories.AsNoTracking().OrderBy(x => x.Title).ToListAsync();
+        model = await Context.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Id == Id);
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            var prod = await Context.Products.FirstOrDefaultAsync(x => x.Id == Id);
+            if (prod is null)
+                throw new Exception("Produto não encontrado");
+
+            prod.Title = model.Title;
+            prod.Price = model.Price;
+            prod.CategoryId = model.CategoryId;
+
+            Context.Products.Update(prod);
+            await Context.SaveChangesAsync();
+
+            NavManager.NavigateTo("/products");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+}
